@@ -114,6 +114,7 @@ Flipsnap.prototype.init = function(element, opts) {
   self.disable3d = (opts.disable3d === undefined) ? false : opts.disable3d;
   self.transitionDuration = (opts.transitionDuration === undefined) ? '350ms' : opts.transitionDuration + 'ms';
   self.threshold = opts.threshold || 0;
+  self.disableSnap = (opts.disableSnap === undefined) ? false : opts.disableSnap;
 
   // set property
   self.currentPoint = 0;
@@ -327,6 +328,7 @@ Flipsnap.prototype._touchStart = function(event, type) {
   self.basePageX = self.startPageX;
   self.directionX = 0;
   self.startTime = event.timeStamp;
+  self.startX = self.disableSnap ? self.currentX : undefined;
   self._triggerEvent('fstouchstart', true, false);
 };
 
@@ -402,8 +404,8 @@ Flipsnap.prototype._touchEnd = function(event, type) {
   if (!self.scrolling) {
     return;
   }
-
-  var newPoint = -self.currentX / self._distance;
+  
+  var newPoint = -(self.currentX + (self.disableSnap ? self.currentX - self.startX : 0 )) / self._distance;
   newPoint =
     (self.directionX > 0) ? Math.ceil(newPoint) :
     (self.directionX < 0) ? Math.floor(newPoint) :
