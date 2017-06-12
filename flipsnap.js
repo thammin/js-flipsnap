@@ -27,6 +27,8 @@ var gestureStart = false;
 
 var DISTANCE_THRESHOLD = 5;
 var ANGLE_THREHOLD = 55;
+var SPEED_THRESHOLD = 0.05; // The number to be used for determine user sliding
+var SPEED_STACK_COUNT = 3; // The number to be cached in stack for average speed calculation
 
 support.transform3d = hasProp([
   'perspectiveProperty',
@@ -329,6 +331,7 @@ Flipsnap.prototype._touchStart = function(event, type) {
   self.directionX = 0;
   self.startTime = event.timeStamp;
   self.startX = self.disableSnap ? self.currentX : undefined;
+  self.speedStack = [];
   self._triggerEvent('fstouchstart', true, false);
 };
 
@@ -352,6 +355,9 @@ Flipsnap.prototype._touchMove = function(event, type) {
     if (newX >= 0 || newX < self._maxX) {
       newX = Math.round(self.currentX + distX / 3);
     }
+
+    self.speedStack.unshift(Math.abs(distX) / (event.timeStamp - self.startTime));
+    self.speedStack = self.speedStack.slice(0, SPEED_STACK_COUNT);
 
     // When distX is 0, use one previous value.
     // For android firefox. When touchend fired, touchmove also
@@ -405,7 +411,20 @@ Flipsnap.prototype._touchEnd = function(event, type) {
     return;
   }
   
-  var newPoint = -(self.currentX + (self.disableSnap ? self.currentX - self.startX : 0 )) / self._distance;
+  var deltaDist = 0;
+
+  // calculate the extra distance if we are in disableSnap mode
+  if (self.disableSnap) {
+    var averageSpeed = self.speedStack.reduce(function(sum, speed) {
+      return sum + speed;
+    }, 0) / self.speedStack.length;
+    
+    if (averageSpeed > SPEED_THRESHOLD) {
+      deltaDist = self.currentX - self.startX;
+    }
+  }
+
+  var newPoint = -(self.currentX + deltaDist) / self._distance;
   newPoint =
     (self.directionX > 0) ? Math.ceil(newPoint) :
     (self.directionX < 0) ? Math.floor(newPoint) :
